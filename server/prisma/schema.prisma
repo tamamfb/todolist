@@ -1,0 +1,164 @@
+// -----------------------------------------------------
+//  Prisma Schema for Todo List + OTP Email Verification
+//  Database: MySQL (phpMyAdmin compatible)
+//  Semua ID: BIGINT (Int @db.BigInt)
+// -----------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================
+//  USERS
+// =======================
+model User {
+  id          BigInt     @id @default(autoincrement()) @db.BigInt
+  name        String
+  email       String      @unique
+  password    String
+  is_verified Boolean     @default(false)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  // Relations
+  categories   Category[]
+  tasks        Task[]
+  refreshToken RefreshToken[]
+  emailTokens  EmailVerificationToken[]
+  emailLogs    EmailLog[]
+}
+
+// =======================
+//  EMAIL VERIFICATION TOKENS (OTP)
+// =======================
+model EmailVerificationToken {
+  id         BigInt   @id @default(autoincrement()) @db.BigInt
+  user_id    BigInt   @db.BigInt
+  otp_code   String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+}
+
+// =======================
+//  REFRESH TOKENS
+// =======================
+model RefreshToken {
+  id         BigInt   @id @default(autoincrement()) @db.BigInt
+  user_id    BigInt   @db.BigInt
+  token      String
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+}
+
+// =======================
+//  CATEGORIES
+// =======================
+model Category {
+  id         BigInt   @id @default(autoincrement()) @db.BigInt
+  user_id    BigInt   @db.BigInt
+  name       String
+  color      String?  @default("#6b7280")
+  icon       String?  @default("folder")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [user_id], references: [id])
+  tasks Task[]
+}
+
+// =======================
+//  TASKS
+// =======================
+model Task {
+  id            BigInt   @id @default(autoincrement()) @db.BigInt
+  user_id       BigInt   @db.BigInt
+  category_id   BigInt?  @db.BigInt
+  title         String
+  description   String?
+  priority      Priority
+  due_date      DateTime?
+  reminder_at   DateTime?  // Waktu untuk kirim email reminder
+  reminder_sent Boolean    @default(false) // Apakah reminder sudah dikirim
+  status        Status     @default(pending)
+
+  // 👇 baru: visibility public/private
+  visibility  Visibility @default(private)
+
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+
+  // Relations
+  user      User      @relation(fields: [user_id], references: [id])
+  category  Category? @relation(fields: [category_id], references: [id])
+  files     TaskFile[]
+  emailLogs EmailLog[]
+}
+
+// ENUMS
+enum Priority {
+  low
+  medium
+  high
+}
+
+enum Status {
+  pending
+  complete
+}
+
+// 👇 enum baru untuk public/private
+enum Visibility {
+  private
+  public
+}
+
+// =======================
+//  TASK FILES (Upload)
+// =======================
+model TaskFile {
+  id            BigInt   @id @default(autoincrement()) @db.BigInt
+  task_id       BigInt   @db.BigInt
+  file_path     String
+  original_name String
+  mime_type     String
+  size          BigInt   @db.BigInt
+  uploaded_at   DateTime @default(now())
+
+  // Relations
+  task Task @relation(fields: [task_id], references: [id])
+}
+
+// =======================
+//  EMAIL LOGS
+// =======================
+model EmailLog {
+  id         BigInt   @id @default(autoincrement()) @db.BigInt
+  user_id    BigInt   @db.BigInt
+  task_id    BigInt?  @db.BigInt
+  type       EmailType
+  sent_at    DateTime @default(now())
+
+  // Relations
+  user User  @relation(fields: [user_id], references: [id])
+  task Task? @relation(fields: [task_id], references: [id])
+}
+
+// ENUM
+enum EmailType {
+  deadline_reminder
+  daily_summary
+  verification
+}

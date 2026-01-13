@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `category` ADD COLUMN `color` VARCHAR(191) NULL DEFAULT '#6b7280',
+    ADD COLUMN `icon` VARCHAR(191) NULL DEFAULT 'folder';
